@@ -11,13 +11,13 @@ import java.util.stream.Stream;
 
 public class main{
     public static void main(String[] args) {
-        while(true){
-            String logFile = Menu();
-            if(!logFile.contains("Exit Program")){
-                readLines(logFile);
+        while(true){ //Loop forever
+            String logFile = Menu(); //Get the Filename to analyze
+            if(!logFile.contains("Exit Program")){ //Close if logFile is "Exit Program"
+                readLines(logFile); //Pass filename to readLines
             }else{
                 System.out.println("Goodbye!");
-                System.exit(0);
+                System.exit(0); //Kill the program
             }
         }
     }
@@ -26,35 +26,37 @@ public class main{
         String fileName = null;
         int fileNum = 0;
         try {
-            List<String> files = listFiles();
+            List<String> files = listFiles(); //Create Arraylist of files in directory
             files.add("..Exit Program");
-            drawFiles(files);
+            drawFiles(files); //Draw the file listing
             System.out.println("Which file would you like to display?");
             Scanner kb = new Scanner(System.in);  // Create a Scanner object
-            while (true)
-            try {
-                fileNum = Integer.parseInt(kb.nextLine())-1;
-                break;
-            } catch (NumberFormatException nfe) {
-                System.out.print("Try again: ");
+            while (true){ //Take in next integer from keyboard
+                try {
+                    fileNum = Integer.parseInt(kb.nextLine())-1;
+                    break;
+                } catch (NumberFormatException nfe) {
+                    System.out.print("Try again: ");
+                }
             }
-            fileName=files.get(fileNum);
+            fileName=files.get(fileNum); //Converts number to index in ArrayList
 
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return fileName.substring(2);
+        return fileName.substring(2); //Cut off the "./" from the beginning of the string, and send back the filename
     }
 
     public static void drawFiles(List<String> files){
         String s = "";
         int maxLength=0;
         int fLen = 0;
-        for(int f=0;f<files.size();f++){
+        for(int f=0;f<files.size();f++){ //Find the length of the longest filename+numbers for box
             fLen = String.valueOf(f).length();
             if(maxLength<(files.get(f).length()+fLen))
                 maxLength=(files.get(f).length()+fLen);
         }
+        //Print out the box itself, with filenames and numbers inside
         System.out.print("+");
         for (int i = 0; i <= maxLength+1 ; i++) {
             System.out.print("-");
@@ -77,9 +79,7 @@ public class main{
         System.out.println("+");
     }
 
-    public static List<String> listFiles()
-        throws IOException {
-
+    public static List<String> listFiles() throws IOException { //Use .walk to find files in current directory ending in .txt
         List<String> result;
         try (Stream<Path> walk = Files.walk(Paths.get("."))) {
             result = walk
@@ -88,12 +88,11 @@ public class main{
                     .filter(f -> f.endsWith("txt"))
                     .collect(Collectors.toList());
         }
-
         return result;
     }
 
     public static void readLines(String filename){
-        String[] snapshot = new String[98];
+        String[] snapshot = new String[98]; //Data from ALDL log is 98 data values per second
         File file = new File(filename);
         double time = 0;
         float stft= 0;
@@ -102,33 +101,33 @@ public class main{
         int totalOccurs = 0;
         try {
             System.out.println("EGR Data from "+filename+": ");
-            Scanner sc = new Scanner(file);
-            while(sc.hasNext()){
+            Scanner sc = new Scanner(file); //Scan the filename provided
+            while(sc.hasNext()){ //While there is a next line
                 for (int i = 0; i < snapshot.length; i++) {
-                    snapshot[i] = sc.next();
+                    snapshot[i] = sc.next(); //Read all 98 values into the array
                 }
 
-                if ((Double.parseDouble(snapshot[39])>0)&&(Double.parseDouble(snapshot[38])>36)){
-                    if(Integer.parseInt(snapshot[33])>=128){
+                if ((Double.parseDouble(snapshot[39])>0)&&(Double.parseDouble(snapshot[38])>36)){ //If EGR is on, and Computer is not disabling the timing advance
+                    if(Integer.parseInt(snapshot[33])>=128){//Formats positive STFT
                         stft = Math.abs(100*(1-(Float.parseFloat(snapshot[33])/128)));
-                    }else if(Integer.parseInt(snapshot[33])<128){
+                    }else if(Integer.parseInt(snapshot[33])<128){//Formats negative STFT
                         stft = -100*(1-(Float.parseFloat(snapshot[33])/128));
                     }
-                    String stftStr = colorize(stft);
-                    if (Math.abs(Double.parseDouble(snapshot[0])-time)>2){
+                    String stftStr = colorize(stft); //Colorize the STFT to be easier to read
+                    if (Math.abs(Double.parseDouble(snapshot[0])-time)>2){ //If the time passed is longer than 2 second between EGR activations, skip a line
                         System.out.println();
                     }
-                    System.out.println(snapshot[0] + "s, " + snapshot[40] + "F, " + snapshot[39] + "% EGR, "+snapshot[38]+" Degrees Advance, "+snapshot[30]+"kPa, "+snapshot[31]+"RPM, "+snapshot[32]+"% Throttle, "+stftStr+" STFT");
-                    time = Double.parseDouble(snapshot[0]);
-                    totalOccurs++;
-                    avgstft = avgstft+stft;
-                    avgMAP = avgMAP+Float.parseFloat(snapshot[30]);
+                    System.out.println(Math.floor(Float.parseFloat(snapshot[0])) + "s, " + snapshot[40] + "F, " + snapshot[39] + "% EGR, "+snapshot[38]+" Degrees Advance, "+snapshot[30]+"kPa, "+snapshot[31]+"RPM, "+snapshot[32]+"% Throttle, "+stftStr+" STFT"); //Print out all of the information I feel is needed to diagnose EGR
+                    time = Double.parseDouble(snapshot[0]); //Keep track of the current time from the snapshot
+                    totalOccurs++; //Add to the number of EGR occurrences to calculate average
+                    avgstft = avgstft+stft; //Add STFT to average
+                    avgMAP = avgMAP+Float.parseFloat(snapshot[30]); //Add MAP to calculate average
                 }
             }
-            sc.close();
-            avgMAP=avgMAP/totalOccurs;
-            avgstft=avgstft/totalOccurs;
-            String avgstftStr = colorize(avgstft);
+            sc.close(); //When done, close the file
+            avgMAP=avgMAP/totalOccurs; //Calculate average MAP to put at the end
+            avgstft=avgstft/totalOccurs; //Calculate average STFT to put at the end
+            String avgstftStr = colorize(avgstft); //Colorize the average STFT
             System.out.println("Average STFT: "+avgstftStr+" \nAverage MAP: "+String.format("%.2f",avgMAP)+"kPa");
             System.out.println("----------------------------------------------------------------------------------------------");
         } catch (FileNotFoundException e) {
@@ -136,18 +135,18 @@ public class main{
         }
     }
 
-    private static String colorize(float percentage){
+    private static String colorize(float percentage){ //Sets the colors of the STFT, Blue: rich, Red: lean, Yellow: ok, Green: great
         String color;
         if(-5<=percentage && percentage<=5){
-            color= "\u001B[32m";
+            color= "\u001B[32m"; //Color Green
         }else if(percentage<20 && percentage>-20){
-            color= "\u001B[33m";
+            color= "\u001B[33m"; //Color Yellow
         }else if (-20>=percentage){
-            color= "\u001B[34m";
+            color= "\u001B[34m"; //Color Blue
         }else{
-            color= "\u001B[31m";
+            color= "\u001B[31m"; //Color Red
         }
-        return(color+String.format("%.2f", percentage)+"%"+"\u001B[0m");
+        return(color+String.format("%.2f", percentage)+"%"+"\u001B[0m"); //Return colored text with percentage and Color end
     }
 
 }
