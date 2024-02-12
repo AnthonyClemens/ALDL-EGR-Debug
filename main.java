@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 public class main{
     public static void main(String[] args) {
         while(true){ //Loop forever
-            String logFile = Menu(); //Get the Filename to analyze
+            String logFile = menu(); //Get the Filename to analyze
             if(!logFile.contains("Exit Program")){ //Close if logFile is "Exit Program"
                 readLines(logFile); //Pass filename to readLines
             }else{
@@ -22,11 +22,11 @@ public class main{
         }
     }
 
-    public static String Menu(){
+    public static String menu(){
         String fileName = null;
         int fileNum = 0;
         try {
-            List<String> files = listFiles(); //Create Arraylist of files in directory
+            List<String> files = listFiles(); //Create Arraylist of files i7n directory
             files.add("..Exit Program");
             drawFiles(files); //Draw the file listing
             System.out.println("Which file would you like to display?");
@@ -34,9 +34,13 @@ public class main{
             while (true){ //Take in next integer from keyboard
                 try {
                     fileNum = Integer.parseInt(kb.nextLine())-1;
-                    break;
+                    if((fileNum>files.size()) || (fileNum<0)){ //If entered value is invalid
+                        System.out.print("\u001B[31m"+"Try again: "+"\u001B[0m");
+                    }else{
+                        break;
+                    }
                 } catch (NumberFormatException nfe) {
-                    System.out.print("Try again: ");
+                    System.out.print("\u001B[31m"+"Try again: "+"\u001B[0m");
                 }
             }
             fileName=files.get(fileNum); //Converts number to index in ArrayList
@@ -56,6 +60,7 @@ public class main{
             if(maxLength<(files.get(f).length()+fLen))
                 maxLength=(files.get(f).length()+fLen);
         }
+        System.out.println("ALDL EGR Debug by \u001B[34mAnthony Clemens\u001B[0m 2024\nLog files found in current directory:");
         //Print out the box itself, with filenames and numbers inside
         System.out.print("+");
         for (int i = 0; i <= maxLength+1 ; i++) {
@@ -99,8 +104,10 @@ public class main{
         float avgstft = 0;
         float avgMAP = 0;
         int totalOccurs = 0;
+        int maxLength = 0;
+        String output = null;
         try {
-            System.out.println("EGR Data from "+filename+": ");
+            System.out.println("\nEGR Data from "+filename+": ");
             Scanner sc = new Scanner(file); //Scan the filename provided
             while(sc.hasNext()){ //While there is a next line
                 for (int i = 0; i < snapshot.length; i++) {
@@ -117,11 +124,15 @@ public class main{
                     if (Math.abs(Double.parseDouble(snapshot[0])-time)>2){ //If the time passed is longer than 2 second between EGR activations, skip a line
                         System.out.println();
                     }
-                    System.out.println(Math.floor(Float.parseFloat(snapshot[0])) + "s, " + snapshot[40] + "F, " + snapshot[39] + "% EGR, "+snapshot[38]+" Degrees Advance, "+snapshot[30]+"kPa, "+snapshot[31]+"RPM, "+snapshot[32]+"% Throttle, "+stftStr+" STFT"); //Print out all of the information I feel is needed to diagnose EGR
+                    output = Math.floor(Float.parseFloat(snapshot[0])) + "s, " + snapshot[40] + "F, " + snapshot[39] + "% EGR, "+snapshot[38]+" Degrees Advance, "+snapshot[30]+"kPa, "+snapshot[31]+"RPM, "+snapshot[32]+"% Throttle, "+stftStr+" STFT";
+                    System.out.println(output); //Print out all of the information I feel is needed to diagnose EGR
                     time = Double.parseDouble(snapshot[0]); //Keep track of the current time from the snapshot
                     totalOccurs++; //Add to the number of EGR occurrences to calculate average
                     avgstft = avgstft+stft; //Add STFT to average
                     avgMAP = avgMAP+Float.parseFloat(snapshot[30]); //Add MAP to calculate average
+                    if(maxLength<output.length()){
+                        maxLength = output.length();
+                    }
                 }
             }
             sc.close(); //When done, close the file
@@ -129,9 +140,15 @@ public class main{
             avgstft=avgstft/totalOccurs; //Calculate average STFT to put at the end
             String avgstftStr = colorize(avgstft); //Colorize the average STFT
             System.out.println("Average STFT: "+avgstftStr+" \nAverage MAP: "+String.format("%.2f",avgMAP)+"kPa");
-            System.out.println("----------------------------------------------------------------------------------------------");
+            System.out.println("End of "+filename);
+            for(int i=0; i<maxLength-9; i++){ //Print out dashes to signify the end of the log
+                System.out.print("-");
+            }
+            System.out.println();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
+        } catch (NumberFormatException e){
+            System.out.print("\u001B[31mPlease remove header of ALDL log file and try again...\u001B[0m\n");
         }
     }
 
