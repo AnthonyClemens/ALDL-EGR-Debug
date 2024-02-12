@@ -12,10 +12,14 @@ import java.util.stream.Stream;
 public class main{
     public static void main(String[] args) {
         while(true){
-            String logFile = Menu().substring(2);
-            readLines(logFile);
+            String logFile = Menu();
+            if(!logFile.contains("Exit Program")){
+                readLines(logFile);
+            }else{
+                System.out.println("Goodbye!");
+                System.exit(0);
+            }
         }
-
     }
 
     public static String Menu(){
@@ -23,6 +27,7 @@ public class main{
         int fileNum = 0;
         try {
             List<String> files = listFiles();
+            files.add("..Exit Program");
             drawFiles(files);
             System.out.println("Which file would you like to display?");
             Scanner kb = new Scanner(System.in);  // Create a Scanner object
@@ -38,7 +43,7 @@ public class main{
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return fileName;
+        return fileName.substring(2);
     }
 
     public static void drawFiles(List<String> files){
@@ -71,6 +76,7 @@ public class main{
         }
         System.out.println("+");
     }
+
     public static List<String> listFiles()
         throws IOException {
 
@@ -129,6 +135,7 @@ public class main{
             e.printStackTrace();
         }
     }
+
     private static String colorize(float percentage){
         String color;
         if(-5<=percentage && percentage<=5){
