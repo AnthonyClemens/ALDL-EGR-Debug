@@ -89,7 +89,7 @@ public class main{
         try (Stream<Path> walk = Files.walk(Paths.get("."))) {
             result = walk
                     .filter(p -> !Files.isDirectory(p))
-                    .map(p -> p.toString().toLowerCase())
+                    .map(p -> p.toString())
                     .filter(f -> f.endsWith("txt"))
                     .collect(Collectors.toList());
         }
@@ -98,7 +98,13 @@ public class main{
 
     public static void readLines(String filename){
         String[] snapshot = new String[98]; //Data from ALDL log is 98 data values per second
+        String OS = System.getProperty("os.name").toLowerCase();
         File file = new File(filename);
+        if(OS.contains("nix") || OS.contains("nux") || OS.contains("aix")){
+            Path currentRelativePath = Paths.get("");
+            String unixPathString = currentRelativePath.toAbsolutePath().toString()+"/"+filename.trim();
+            file = new File(unixPathString);
+        }
         double time = 0;
         float stft= 0;
         float avgstft = 0;
@@ -111,7 +117,9 @@ public class main{
             Scanner sc = new Scanner(file); //Scan the filename provided
             while(sc.hasNext()){ //While there is a next line
                 for (int i = 0; i < snapshot.length; i++) {
-                    snapshot[i] = sc.next(); //Read all 98 values into the array
+                    if(sc.hasNext()){
+                        snapshot[i] = sc.next(); //Read all 98 values into the array
+                    }
                 }
 
                 if ((Double.parseDouble(snapshot[39])>0)&&(Double.parseDouble(snapshot[38])>36)){ //If EGR is on, and Computer is not disabling the timing advance
