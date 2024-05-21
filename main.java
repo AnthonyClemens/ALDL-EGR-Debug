@@ -10,51 +10,51 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class main{
-    public static void main(String[] args) {
+
+    static final String TRYAGAIN_STRING = "\u001B[31m"+"Try again: "+"\u001B[0m";
+
+    public static void main(String[] args) throws IOException {
         while(true){ //Loop forever
             String logFile = menu(); //Get the Filename to analyze
-            if(!logFile.contains("Exit Program")){ //Close if logFile is "Exit Program"
-                readLines(logFile); //Pass filename to readLines
-            }else{
+            if(logFile.contains("Exit Program")){ //Close if logFile is "Exit Program"
                 System.out.println("Goodbye!");
                 System.exit(0); //Kill the program
             }
+            readLines(logFile); //Pass filename to readLines
         }
     }
 
-    public static String menu(){
-        String fileName = null;
-        int fileNum = 0;
-        try {
-            List<String> files = listFiles(); //Create Arraylist of files i7n directory
-            files.add("..Exit Program");
-            drawFiles(files); //Draw the file listing
-            System.out.println("Which file would you like to display?");
-            Scanner kb = new Scanner(System.in);  // Create a Scanner object
-            while (true){ //Take in next integer from keyboard
-                try {
-                    fileNum = Integer.parseInt(kb.nextLine())-1;
-                    if((fileNum>files.size()) || (fileNum<0)){ //If entered value is invalid
-                        System.out.print("\u001B[31m"+"Try again: "+"\u001B[0m");
-                    }else{
-                        break;
-                    }
-                } catch (NumberFormatException nfe) {
-                    System.out.print("\u001B[31m"+"Try again: "+"\u001B[0m");
-                }
-            }
-            fileName=files.get(fileNum); //Converts number to index in ArrayList
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public static String menu() throws IOException{
+        String fileName;
+        List<String> files = listFiles(); //Create Arraylist of files in directory
+        files.add("..Exit Program");
+        drawFiles(files); //Draw the file listing
+        System.out.println("Which file would you like to display?");
+        fileName=files.get(getValidInt(files)); //Converts number to index in ArrayList
         return fileName.substring(2); //Cut off the "./" from the beginning of the string, and send back the filename
     }
 
+    public static int getValidInt(List<String> files){
+        int fileNum;
+        Scanner kb = new Scanner(System.in);  // Create a Scanner object
+        while (true){ //Take in next integer from keyboard
+            try {
+                fileNum = Integer.parseInt(kb.nextLine())-1;
+                if((fileNum>=files.size()) || (fileNum<0)){ //If entered value is invalid
+                    System.out.print(TRYAGAIN_STRING);
+                }else{
+                    return fileNum;
+                }
+            } catch (NumberFormatException nfe) {
+                System.out.print(TRYAGAIN_STRING);
+            }
+        }
+    }
+
     public static void drawFiles(List<String> files){
-        String s = "";
+        String s;
         int maxLength=0;
-        int fLen = 0;
+        int fLen;
         for(int f=0;f<files.size();f++){ //Find the length of the longest filename+numbers for box
             fLen = String.valueOf(f).length();
             if(maxLength<(files.get(f).length()+fLen))
@@ -105,59 +105,59 @@ public class main{
             String unixPathString = currentRelativePath.toAbsolutePath().toString()+"/"+filename.trim();
             file = new File(unixPathString);
         }
-        double time = 0;
-        float stft= 0;
+        double newTime = 0;
+        double lastTime = 0;
         float avgstft = 0;
         float avgMAP = 0;
         int totalOccurs = 0;
         int maxLength = 0;
-        String output = null;
+        float stft = 0;
         try {
             System.out.println("\nEGR Data from "+filename+": ");
             Scanner sc = new Scanner(file); //Scan the filename provided
+            String headerTest = sc.nextLine();
+            if(headerTest.contains("Time")){
+                System.out.println("Header found, skipping...");
+            }
             while(sc.hasNext()){ //While there is a next line
-                for (int i = 0; i < snapshot.length; i++) {
-                    if(sc.hasNext()){
-                        snapshot[i] = sc.next(); //Read all 98 values into the array
-                    }
-                }
+                snapshot = sc.nextLine().split("\t");
 
                 if ((Double.parseDouble(snapshot[39])>0)&&(Double.parseDouble(snapshot[38])>36)){ //If EGR is on, and Computer is not disabling the timing advance
-                    if(Integer.parseInt(snapshot[33])>=128){//Formats positive STFT
-                        stft = Math.abs(100*(1-(Float.parseFloat(snapshot[33])/128)));
-                    }else if(Integer.parseInt(snapshot[33])<128){//Formats negative STFT
-                        stft = -100*(1-(Float.parseFloat(snapshot[33])/128));
-                    }
-                    String stftStr = colorize(stft); //Colorize the STFT to be easier to read
-                    if (Math.abs(Double.parseDouble(snapshot[0])-time)>2){ //If the time passed is longer than 2 second between EGR activations, skip a line
-                        System.out.println();
-                    }
-                    output = Math.floor(Float.parseFloat(snapshot[0])) + "s, " + snapshot[40] + "F, " + snapshot[39] + "% EGR, "+snapshot[38]+" Degrees Advance, "+snapshot[30]+"kPa, "+snapshot[31]+"RPM, "+snapshot[32]+"% Throttle, "+stftStr+" STFT";
-                    System.out.println(output); //Print out all of the information I feel is needed to diagnose EGR
-                    time = Double.parseDouble(snapshot[0]); //Keep track of the current time from the snapshot
+                    double[] results = printData(snapshot, lastTime);
+                    newTime=results[0];
+                    stft=(float)results[1];
                     totalOccurs++; //Add to the number of EGR occurrences to calculate average
                     avgstft = avgstft+stft; //Add STFT to average
                     avgMAP = avgMAP+Float.parseFloat(snapshot[30]); //Add MAP to calculate average
-                    if(maxLength<output.length()){
-                        maxLength = output.length();
-                    }
                 }
+                lastTime=newTime;
             }
             sc.close(); //When done, close the file
             avgMAP=avgMAP/totalOccurs; //Calculate average MAP to put at the end
             avgstft=avgstft/totalOccurs; //Calculate average STFT to put at the end
             String avgstftStr = colorize(avgstft); //Colorize the average STFT
             System.out.println("Average STFT: "+avgstftStr+" \nAverage MAP: "+String.format("%.2f",avgMAP)+"kPa");
-            System.out.println("End of "+filename);
-            for(int i=0; i<maxLength-9; i++){ //Print out dashes to signify the end of the log
-                System.out.print("-");
-            }
-            System.out.println();
-        } catch (FileNotFoundException e) {
+            System.out.println("End of "+filename+"\n");
+        } catch (FileNotFoundException | NumberFormatException e) {
             e.printStackTrace();
-        } catch (NumberFormatException e){
-            System.out.print("\u001B[31mPlease remove header of ALDL log file and try again...\u001B[0m\n");
         }
+    }
+
+    public static double[] printData(String[] snapshot, double time){
+        float stft= 0;
+        String output;
+        if(Integer.parseInt(snapshot[33])>=128){//Formats positive STFT
+            stft = Math.abs(100*(1-(Float.parseFloat(snapshot[33])/128)));
+        }else if(Integer.parseInt(snapshot[33])<128){//Formats negative STFT
+            stft = -100*(1-(Float.parseFloat(snapshot[33])/128));
+        }
+        String stftStr = colorize(stft); //Colorize the STFT to be easier to read
+        if (Math.abs(Double.parseDouble(snapshot[0])-time)>2){ //If the time passed is longer than 2 second between EGR activations, skip a line
+            System.out.println();
+        }
+        output = Math.floor(Float.parseFloat(snapshot[0])) + "s, " + snapshot[40] + "F, " + snapshot[39] + "% EGR, "+snapshot[38]+" Degrees Advance, "+snapshot[30]+"kPa, "+snapshot[31]+"RPM, "+snapshot[32]+"% Throttle, "+stftStr+" STFT";
+        System.out.println(output); //Print out all of the information I feel is needed to diagnose EGR
+        return new double[] {Double.parseDouble(snapshot[0]), stft};
     }
 
     private static String colorize(float percentage){ //Sets the colors of the STFT, Blue: rich, Red: lean, Yellow: ok, Green: great
